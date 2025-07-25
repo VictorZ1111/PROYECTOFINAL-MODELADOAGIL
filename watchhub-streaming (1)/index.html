@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WatchHub Streaming</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>🎬 WatchHub Streaming</h1>
+    <nav>
+      <ul>
+        <li><a href="#planes">Planes</a></li>
+        <li><a href="#catalogo">Catálogo</a></li>
+        <li><a href="#login">Iniciar sesión</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h2>Tu entretenimiento en un solo lugar</h2>
+    <p>Películas, series y documentales sin límites.</p>
+    <a href="#planes" class="btn">Ver Planes</a>
+  </section>
+
+  <section id="planes">
+    <h2>Planes de Suscripción</h2>
+    <div class="planes-grid">
+      <div class="plan">
+        <h3>Básico</h3>
+        <p>1 pantalla | SD</p>
+        <p>$5 / mes</p>
+      </div>
+      <div class="plan destacado">
+        <h3>Estándar</h3>
+        <p>2 pantallas | HD</p>
+        <p>$10 / mes</p>
+      </div>
+      <div class="plan">
+        <h3>Premium</h3>
+        <p>4 pantallas | 4K</p>
+        <p>$15 / mes</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="catalogo">
+    <h2>Catálogo Destacado</h2>
+    <div class="catalogo-grid">
+      <div class="contenido">Película A</div>
+      <div class="contenido">Serie B</div>
+      <div class="contenido">Documental C</div>
+    </div>
+  </section>
+
+  <section id="login">
+    <h2>Iniciar Sesión</h2>
+    <form class="login-form">
+      <label for="email">Correo Electrónico</label>
+      <input type="email" id="email" name="email" placeholder="correo@ejemplo.com" required />
+
+      <label for="password">Contraseña</label>
+      <input type="password" id="password" name="password" placeholder="********" required />
+
+      <button type="submit">Ingresar</button>
+    </form>
+  </section>
+
+  <footer>
+    <p>&copy; 2025 WatchHub. Todos los derechos reservados.</p>
+  </footer>
+</body>
+</html>
