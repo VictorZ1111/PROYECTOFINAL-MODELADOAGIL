@@ -1,0 +1,48 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: watchhub
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v3
+
+      - name: Instalar dependencias Backend
+        run: |
+          cd backend
+          npm install
+
+      - name: Ejecutar tests Backend
+        run: |
+          cd backend
+          npm run test -- --coverage
+
+      - name: Instalar dependencias Frontend
+        run: |
+          cd frontend
+          npm install
+
+      - name: Ejecutar tests Frontend
+        run: |
+          cd frontend
+          npm run test -- --coverage

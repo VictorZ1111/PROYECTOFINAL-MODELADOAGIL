@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { useAuthToast } from "./use-auth-toast"
 
 export function useFavorites() {
+
   const [favorites, setFavorites] = useState<string[]>([])
   const [user, setUser] = useState<any>(null)
   const { showAuthRequiredToast } = useAuthToast()
