@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 
 export function useFavorites() {
+
   const [favorites, setFavorites] = useState<string[]>([])
 
   useEffect(() => {
@@ -10,6 +11,7 @@ export function useFavorites() {
     if (savedFavorites) {
       setFavorites(JSON.parse(savedFavorites))
     }
+    
   }, [])
 
   const toggleFavorite = (contentId: string) => {
