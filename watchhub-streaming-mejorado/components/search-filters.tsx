@@ -117,7 +117,7 @@ export function SearchFilters({ filters, onFilterChange, onClearFilters, resultC
           <Slider
             value={[filters.rating]}
             onValueChange={(value) => onFilterChange("rating", value[0])}
-            max={5}
+            max={10}
             min={0}
             step={0.1}
             className="w-full"

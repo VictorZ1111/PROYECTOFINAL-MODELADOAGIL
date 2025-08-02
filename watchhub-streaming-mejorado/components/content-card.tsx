@@ -24,6 +24,20 @@ export function ContentCard({ content, size = "medium" }: ContentCardProps) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
+  // Función para convertir duración de minutos a formato "Xh Ymin"
+  const formatDuration = (duracion: string | number | undefined) => {
+    if (!duracion) return ""
+    const totalMinutos = parseInt(duracion.toString()) || 0
+    if (totalMinutos === 0) return ""
+    
+    const horas = Math.floor(totalMinutos / 60)
+    const minutos = totalMinutos % 60
+    
+    if (horas === 0) return `${minutos}min`
+    if (minutos === 0) return `${horas}h`
+    return `${horas}h ${minutos}min`
+  }
+
   // Verificar autenticación y estado admin
   useEffect(() => {
     const checkUserStatus = async () => {
@@ -50,13 +64,13 @@ export function ContentCard({ content, size = "medium" }: ContentCardProps) {
   }, [])
 
   const sizeClasses = {
-    small: "h-48",
-    medium: "h-64",
-    large: "h-80",
+    small: "h-56",
+    medium: "h-72",
+    large: "h-96",
   }
 
   return (
-    <Card className="bg-gray-800/30 border-gray-700 hover:border-red-500/50 transition-all duration-300 hover:scale-105 group cursor-pointer overflow-hidden">
+    <Card className="bg-gray-800/30 border-gray-700 hover:border-red-500/50 transition-all duration-300 hover:scale-105 group cursor-pointer overflow-hidden w-full min-w-[280px]">
       <div className={`relative overflow-hidden ${sizeClasses[size]}`}>
         {/* Loading/Error State */}
         {(!imageLoaded || imageError) && (
@@ -118,20 +132,7 @@ export function ContentCard({ content, size = "medium" }: ContentCardProps) {
               </Link>
             )}
             
-            {/* Botón INFO - Solo para usuarios normales */}
-            {!isAdmin && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-black bg-transparent shadow-lg"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  // Scroll hacia abajo para ver más detalles
-                }}
-              >
-                <Info className="h-4 w-4" />
-              </Button>
-            )}
+
           </div>
         </div>
 
@@ -141,8 +142,8 @@ export function ContentCard({ content, size = "medium" }: ContentCardProps) {
           {content.featured && <Badge className="bg-purple-600 text-white text-xs shadow-lg">⭐ Destacado</Badge>}
         </div>
 
-        {/* Favorite Button - Solo para usuarios autenticados */}
-        {isAuthenticated && (
+        {/* Favorite Button - Solo para usuarios autenticados que NO sean admin */}
+        {isAuthenticated && !isAdmin && (
           <Button
             size="sm"
             variant="ghost"
@@ -159,7 +160,7 @@ export function ContentCard({ content, size = "medium" }: ContentCardProps) {
         {/* Rating Badge */}
         <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm rounded px-2 py-1 flex items-center">
           <Star className="h-3 w-3 text-yellow-500 mr-1" />
-          <span className="text-white text-xs font-medium">{content.rating}</span>
+          <span className="text-white text-xs font-medium">{content.rating}/10</span>
         </div>
       </div>
 
@@ -174,7 +175,7 @@ export function ContentCard({ content, size = "medium" }: ContentCardProps) {
           {content.duration && (
             <div className="flex items-center">
               <Clock className="h-3 w-3 mr-1" />
-              {content.duration}
+              {formatDuration(content.duration)}
             </div>
           )}
           {content.seasons && <span className="text-xs">{content.seasons} temp.</span>}

@@ -23,16 +23,25 @@ function convertToContentFormat(contenido: any) {
   return {
     id: contenido.id.toString(),
     title: contenido.titulo,
+    titulo: contenido.titulo, // Mantener campo original
     description: contenido.descripcion,
+    descripcion: contenido.descripcion, // Mantener campo original
     type: 'Película', // Solo manejamos películas
     rating: contenido.calificacion || 0,
+    calificacion: contenido.calificacion || 0, // Mantener campo original
     year: contenido.año?.toString() || '2024',
+    año: contenido.año || 2024, // Mantener campo original
     genre: contenido.genero || 'Sin género',
+    genero: contenido.genero || 'Sin género', // Mantener campo original
     image: contenido.imagen_url || '/placeholder.jpg',
+    imagen_url: contenido.imagen_url || '/placeholder.jpg', // Mantener campo original
     videoUrl: contenido.video_url || '',
+    video_url: contenido.video_url || '', // Mantener campo original
     duration: contenido.duracion,
-    featured: contenido.destacado || false,
-    trending: contenido.trending || false
+    duracion: contenido.duracion, // Mantener campo original
+    featured: contenido.destacado || false, // Para compatibilidad
+    destacado: contenido.destacado || false, // Campo original de Supabase
+    trending: contenido.trending || false // Campo original de Supabase
   }
 }
 

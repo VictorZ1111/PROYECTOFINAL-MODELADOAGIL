@@ -15,7 +15,21 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, BarChart3, Film, Play, ImageIcon, Calendar, Clock, Trash2, Edit } from "lucide-react"
+import { Plus, BarChart3, Film, Play, ImageIcon, Calendar, Clock, Trash2, Edit, AlertTriangle, X } from "lucide-react"
+
+// Función para convertir duración de minutos a formato "Xh Ymin"
+const formatDuration = (duracion: string | number | undefined) => {
+  if (!duracion) return ""
+  const totalMinutos = parseInt(duracion.toString()) || 0
+  if (totalMinutos === 0) return ""
+  
+  const horas = Math.floor(totalMinutos / 60)
+  const minutos = totalMinutos % 60
+  
+  if (horas === 0) return `${minutos}min`
+  if (minutos === 0) return `${horas}h`
+  return `${horas}h ${minutos}min`
+}
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
@@ -163,7 +177,7 @@ export default function AdminPage() {
           {/* Lista de contenido */}
           <div>
             <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-2">
-              📚 Contenido Actual
+              📚 ¡PELICULAS!
               <Badge variant="secondary" className="bg-gray-700 text-white">
                 {contenidos.length} películas
               </Badge>
@@ -175,14 +189,14 @@ export default function AdminPage() {
               </div>
             ) : error ? (
               <div className="text-center text-red-400 py-12">
-                Error al cargar contenido: {error}
+                {error}
               </div>
             ) : contenidos.length === 0 ? (
               <div className="text-center text-gray-400 py-12">
                 No hay contenido disponible. ¡Agrega la primera película!
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {contenidos.map((content) => (
                   <AdminContentCard key={content.id} content={content} />
                 ))}
@@ -202,27 +216,41 @@ function AdminContentCard({ content }: { content: any }) {
   const router = useRouter()
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null)
 
   const handleEdit = () => {
-    router.push(`/editar-contenido/${content.id}`)
+    router.push(`/admin/editar/${content.id}`)
   }
 
   const handleDelete = async () => {
-    if (confirm('¿Estás seguro de que quieres eliminar esta película?')) {
-      try {
-        const { error } = await supabase
-          .from('contenidos')
-          .delete()
-          .eq('id', content.id)
+    setDeleteLoading(true)
+    
+    try {
+      const { error } = await supabase
+        .from('contenidos')
+        .delete()
+        .eq('id', content.id)
 
-        if (error) {
-          alert('Error al eliminar contenido')
-        } else {
+      if (error) {
+        setMessage({type: 'error', text: 'Error al eliminar contenido'})
+        setShowDeleteModal(false)
+        setDeleteLoading(false)
+      } else {
+        setMessage({type: 'success', text: 'Contenido eliminado exitosamente'})
+        setShowDeleteModal(false)
+        setDeleteLoading(false)
+        
+        // Recargar después de 2 segundos
+        setTimeout(() => {
           window.location.reload()
-        }
-      } catch (err) {
-        alert('Error de conexión')
+        }, 2000)
       }
+    } catch (err) {
+      setMessage({type: 'error', text: 'Error de conexión'})
+      setShowDeleteModal(false)
+      setDeleteLoading(false)
     }
   }
 
@@ -232,8 +260,8 @@ function AdminContentCard({ content }: { content: any }) {
   }
 
   return (
-    <Card className="bg-gray-800/30 border-gray-700 hover:border-red-500/50 transition-all duration-300 hover:scale-105 group cursor-pointer overflow-hidden">
-      <div className="relative overflow-hidden h-64">
+    <Card className="bg-gray-800/30 border-gray-700 hover:border-red-500/50 transition-all duration-300 hover:scale-105 group cursor-pointer overflow-hidden w-full min-w-[280px]">
+      <div className="relative overflow-hidden h-72">
         {/* Loading/Error State */}
         {(!imageLoaded || imageError) && (
           <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
@@ -297,7 +325,7 @@ function AdminContentCard({ content }: { content: any }) {
           className="absolute top-2 right-2 text-white hover:text-red-400 bg-black/50 hover:bg-black/70 backdrop-blur-sm"
           onClick={(e) => {
             e.stopPropagation()
-            handleDelete()
+            setShowDeleteModal(true)
           }}
         >
           <Trash2 className="h-4 w-4" />
@@ -306,7 +334,7 @@ function AdminContentCard({ content }: { content: any }) {
         {/* Rating Badge */}
         <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm rounded px-2 py-1 flex items-center">
           <span className="text-yellow-500 mr-1">⭐</span>
-          <span className="text-white text-xs font-medium">{content.rating || content.calificacion || "N/A"}</span>
+          <span className="text-white text-xs font-medium">{content.rating || content.calificacion || "N/A"}/10</span>
         </div>
       </div>
 
@@ -321,7 +349,7 @@ function AdminContentCard({ content }: { content: any }) {
           {(content.duration || content.duracion) && (
             <div className="flex items-center">
               <Clock className="h-3 w-3 mr-1" />
-              {content.duration || content.duracion}
+              {formatDuration(content.duration || content.duracion)}
             </div>
           )}
         </div>
@@ -330,6 +358,59 @@ function AdminContentCard({ content }: { content: any }) {
           <span className="bg-gray-700 px-2 py-1 rounded text-xs text-gray-300">{content.genre || content.genero}</span>
         </div>
       </CardContent>
+
+      {/* Modal de confirmación de eliminación */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
+            <div className="flex items-center mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-500 mr-3" />
+              <h3 className="text-xl font-bold text-white">Confirmar eliminación</h3>
+            </div>
+            <p className="text-gray-300 mb-6">
+              ¿Estás seguro de que quieres eliminar <span className="font-semibold text-white">"{content.titulo || content.title}"</span>? 
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                onClick={() => setShowDeleteModal(false)}
+                variant="outline"
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                disabled={deleteLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleDelete}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mensaje de notificación */}
+      {message && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className={`
+            p-4 rounded-lg shadow-lg flex items-center gap-3 min-w-80
+            ${message.type === 'success' ? 'bg-green-600' : 'bg-red-600'}
+          `}>
+            <span className="text-white font-medium">{message.text}</span>
+            <Button
+              onClick={() => setMessage(null)}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/20 p-1"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }

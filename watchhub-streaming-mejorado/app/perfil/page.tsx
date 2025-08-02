@@ -104,20 +104,45 @@ export default function PerfilPage() {
 
   const handleGuardar = async () => {
     if (!perfil) return
-    const { error } = await supabase
-      .from('perfiles')
-      .update({
-        nombre: perfil.nombre,
-        rol: perfil.rol
-      })
-      .eq('id', perfil.id)
+    
+    try {
+      // Actualizar perfil en la tabla perfiles
+      const { error: perfilError } = await supabase
+        .from('perfiles')
+        .update({
+          nombre: perfil.nombre,
+          nombre_usuario: perfil.nombre_usuario,
+          email: perfil.email,
+          rol: perfil.rol
+        })
+        .eq('id', perfil.id)
 
-    if (error) {
-      console.error('Error al actualizar perfil:', error)
-      showToast('Error al guardar cambios', 'error')
-    } else {
-      showToast('Perfil actualizado correctamente', 'success')
+      if (perfilError) {
+        console.error('Error al actualizar perfil:', perfilError)
+        showToast('Error al guardar cambios en el perfil', 'error')
+        return
+      }
+
+      // Si se cambió el email, actualizar también en auth
+      if (perfil.email) {
+        const { error: authError } = await supabase.auth.updateUser({
+          email: perfil.email
+        })
+
+        if (authError) {
+          console.error('Error al actualizar email en auth:', authError)
+          showToast('Perfil actualizado, pero hubo un problema al actualizar el email', 'error')
+        } else {
+          showToast('Perfil actualizado correctamente', 'success')
+        }
+      } else {
+        showToast('Perfil actualizado correctamente', 'success')
+      }
+
       setEditando(false)
+    } catch (error) {
+      console.error('Error:', error)
+      showToast('Error inesperado al guardar cambios', 'error')
     }
   }
 
@@ -147,7 +172,7 @@ export default function PerfilPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex flex-col">
       {/* Header según el tipo de usuario */}
       {isAdmin ? (
         <AdminHeader showInicio={true} />
@@ -212,7 +237,7 @@ export default function PerfilPage() {
       )}
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 flex-grow">
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Profile Picture and Basic Info */}
@@ -258,18 +283,43 @@ export default function PerfilPage() {
                     </div>
                     
                     <div>
-                      <Label htmlFor="rol" className="text-gray-300">Rol</Label>
-                      <select
-                        id="rol"
-                        name="rol"
-                        value={perfil.rol}
+                      <Label htmlFor="nombre_usuario" className="text-gray-300">Nombre de usuario</Label>
+                      <Input
+                        id="nombre_usuario"
+                        name="nombre_usuario"
+                        value={perfil.nombre_usuario || ''}
                         onChange={handleChange}
-                        className="w-full bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2 mt-1"
-                      >
-                        <option value="usuario">Usuario</option>
-                        <option value="admin">Administrador</option>
-                      </select>
+                        className="bg-gray-700 border-gray-600 text-white mt-1"
+                      />
                     </div>
+
+                    <div>
+                      <Label htmlFor="email" className="text-gray-300">Email</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={perfil.email || ''}
+                        onChange={handleChange}
+                        className="bg-gray-700 border-gray-600 text-white mt-1"
+                      />
+                    </div>
+                    
+                    {isAdmin && (
+                      <div>
+                        <Label htmlFor="rol" className="text-gray-300">Rol</Label>
+                        <select
+                          id="rol"
+                          name="rol"
+                          value={perfil.rol}
+                          onChange={handleChange}
+                          className="w-full bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2 mt-1"
+                        >
+                          <option value="usuario">Usuario</option>
+                          <option value="admin">Administrador</option>
+                        </select>
+                      </div>
+                    )}
 
                     <div className="flex space-x-4">
                       <Button
@@ -297,23 +347,19 @@ export default function PerfilPage() {
                           <span className="text-white">{perfil.nombre}</span>
                         </div>
                         <div>
+                          <span className="text-gray-400">Nombre de usuario: </span>
+                          <span className="text-white">{perfil.nombre_usuario || 'No definido'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Email: </span>
+                          <span className="text-white">{perfil.email || 'No definido'}</span>
+                        </div>
+                        <div>
                           <span className="text-gray-400">Rol: </span>
                           <span className="text-white capitalize">
                             {perfil.rol === 'admin' ? 'Administrador' : 'Usuario'}
                           </span>
                         </div>
-                        <div>
-                          <span className="text-gray-400">Nombre de usuario: </span>
-                          <span className="text-white">{perfil.nombre_usuario || 'No definido'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-2">Estadísticas</h3>
-                      <div className="text-gray-400">
-                        <p>• Contenido favorito: 0 elementos</p>
-                        <p>• Tiempo de visualización: 0 horas</p>
                       </div>
                     </div>
                   </div>

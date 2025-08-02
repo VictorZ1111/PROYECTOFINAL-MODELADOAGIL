@@ -59,7 +59,7 @@ export function AdminHeader({ showInicio = false }: AdminHeaderProps) {
           {/* Logo */}
           <div className="flex items-center space-x-2">
             <Play className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-white">WatchHub</h1>
+            <h1 className="text-2xl font-bold text-white">WatchHub Admin</h1>
           </div>
 
           {/* Desktop Navigation - Opciones según la página */}

@@ -9,8 +9,8 @@ export function FeaturesSection() {
     },
     {
       icon: Star,
-      title: "Contenido Exclusivo",
-      description: "Acceso a los últimos estrenos y clásicos",
+      title: "Contenido Destacado-Tendencia",
+      description: "Acceso a lo mas popular",
     },
     {
       icon: Heart,
@@ -22,7 +22,7 @@ export function FeaturesSection() {
   return (
     <section className="py-20 px-4">
       <div className="container mx-auto">
-        <h2 className="text-4xl font-bold text-white text-center mb-12">La mejor experiencia cinematográfica</h2>
+        <h2 className="text-4xl font-bold text-white text-center mb-12">¡EXPERIENCIA UNICA!</h2>
         <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
           {features.map((feature, index) => (
             <div key={index} className="text-center">

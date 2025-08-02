@@ -104,6 +104,12 @@ export default function PeliculaPage() {
     }
   }
 
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    togglePlay()
+  }
+
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime)
@@ -164,10 +170,6 @@ export default function PeliculaPage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
-  const handleVideoClick = () => {
-    togglePlay()
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center">
@@ -219,6 +221,8 @@ export default function PeliculaPage() {
               onLoadedMetadata={handleLoadedMetadata}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              controlsList="nodownload nofullscreen noremoteplayback"
+              disablePictureInPicture
             />
 
             {/* Play/Pause Overlay con animación */}
@@ -226,7 +230,7 @@ export default function PeliculaPage() {
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                 <div className="bg-black/70 rounded-full p-4 transition-transform duration-200 hover:scale-110">
                   <Button
-                    onClick={handleVideoClick}
+                    onClick={togglePlay}
                     className="bg-red-600 hover:bg-red-700 rounded-full w-16 h-16 p-0"
                   >
                     <Play className="h-8 w-8 ml-1" />
@@ -263,7 +267,7 @@ export default function PeliculaPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <Button
-                      onClick={handleVideoClick}
+                      onClick={togglePlay}
                       variant="ghost"
                       size="sm"
                       className="text-white hover:text-red-400"
@@ -340,9 +344,9 @@ export default function PeliculaPage() {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xl font-bold text-white mb-3">Descripción</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Sinopsis</h3>
               <p className="text-gray-300 text-lg leading-relaxed">
-                {content.description || "Sin descripción disponible."}
+                {content.description || "Sin sinopsis disponible."}
               </p>
             </div>
 

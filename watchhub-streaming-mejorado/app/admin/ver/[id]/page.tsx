@@ -17,7 +17,9 @@ import {
   Home,
   BarChart3,
   Film,
-  User
+  User,
+  AlertTriangle,
+  X
 } from "lucide-react"
 
 export default function AdminVerPelicula() {
@@ -35,6 +37,9 @@ export default function AdminVerPelicula() {
   const [isMuted, setIsMuted] = useState(false)
   const [showControls, setShowControls] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null)
 
   // Verificar acceso admin
   useEffect(() => {
@@ -115,6 +120,12 @@ export default function AdminVerPelicula() {
     }
   }
 
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    togglePlay()
+  }
+
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime)
@@ -145,10 +156,8 @@ export default function AdminVerPelicula() {
   }
 
   const handleDelete = async () => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este contenido?')) {
-      return
-    }
-
+    setDeleteLoading(true)
+    
     try {
       const { error } = await supabase
         .from('contenidos')
@@ -157,15 +166,25 @@ export default function AdminVerPelicula() {
 
       if (error) {
         console.error('Error al eliminar:', error)
-        alert('Error al eliminar el contenido')
+        setMessage({type: 'error', text: 'Error al eliminar el contenido'})
+        setShowDeleteModal(false)
+        setDeleteLoading(false)
         return
       }
 
-      alert('Contenido eliminado exitosamente')
-      router.push('/admin')
+      setMessage({type: 'success', text: 'Contenido eliminado exitosamente'})
+      setShowDeleteModal(false)
+      setDeleteLoading(false)
+      
+      // Redirigir después de 2 segundos
+      setTimeout(() => {
+        router.push('/admin')
+      }, 2000)
     } catch (err) {
       console.error('Error:', err)
-      alert('Error al eliminar el contenido')
+      setMessage({type: 'error', text: 'Error al eliminar el contenido'})
+      setShowDeleteModal(false)
+      setDeleteLoading(false)
     }
   }
 
@@ -230,8 +249,9 @@ export default function AdminVerPelicula() {
       <header className="bg-black/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <h1 className="text-2xl font-bold text-red-500">🎬 WatchHub Admin</h1>
+            <div className="flex items-center space-x-2">
+              <Play className="h-8 w-8 text-red-500" />
+              <h1 className="text-2xl font-bold text-white">WatchHub Admin</h1>
               <nav className="hidden md:flex space-x-6">
                 <Button 
                   variant="ghost" 
@@ -282,11 +302,13 @@ export default function AdminVerPelicula() {
             className="w-full aspect-video bg-black cursor-pointer"
             src={content.video_url}
             poster={content.imagen_url}
-            onClick={togglePlay}
+            onClick={handleVideoClick}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
+            controlsList="nodownload nofullscreen noremoteplayback"
+            disablePictureInPicture
           />
 
           {/* Play/Pause Overlay con animación */}
@@ -395,7 +417,7 @@ export default function AdminVerPelicula() {
             {/* Botones de Administración */}
             <div className="flex gap-2">
               <Button
-                onClick={() => router.push(`/editar-contenido/${content.id}`)}
+                onClick={() => router.push(`/admin/editar/${content.id}`)}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Edit className="h-4 w-4 mr-2" />
@@ -403,7 +425,7 @@ export default function AdminVerPelicula() {
               </Button>
               
               <Button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteModal(true)}
                 className="bg-red-600 hover:bg-red-700 text-white"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -413,7 +435,7 @@ export default function AdminVerPelicula() {
           </div>
 
           <div className="mb-6">
-            <h3 className="text-xl font-bold text-white mb-3">Descripción</h3>
+            <h3 className="text-xl font-bold text-white mb-3">Sinopsis</h3>
             <p className="text-gray-300 text-lg leading-relaxed">
               {content.descripcion}
             </p>
@@ -426,6 +448,59 @@ export default function AdminVerPelicula() {
           )}
         </div>
       </div>
+
+      {/* Modal de confirmación de eliminación */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
+            <div className="flex items-center mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-500 mr-3" />
+              <h3 className="text-xl font-bold text-white">Confirmar eliminación</h3>
+            </div>
+            <p className="text-gray-300 mb-6">
+              ¿Estás seguro de que quieres eliminar <span className="font-semibold text-white">"{content.titulo}"</span>? 
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                onClick={() => setShowDeleteModal(false)}
+                variant="outline"
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                disabled={deleteLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleDelete}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mensaje de notificación */}
+      {message && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className={`
+            p-4 rounded-lg shadow-lg flex items-center gap-3 min-w-80
+            ${message.type === 'success' ? 'bg-green-600' : 'bg-red-600'}
+          `}>
+            <span className="text-white font-medium">{message.text}</span>
+            <Button
+              onClick={() => setMessage(null)}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/20 p-1"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -213,7 +213,7 @@ export default function EstadisticasPage() {
               <CardHeader className="pb-4">
                 <CardTitle className="text-white flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-orange-500" />
-                  Contenido Trending
+                  Tendencias
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -297,21 +297,11 @@ export default function EstadisticasPage() {
 
                   <div className="flex justify-between items-center p-4 bg-gray-700/50 rounded-lg">
                     <div>
-                      <p className="text-white font-medium">Trending</p>
-                      <p className="text-gray-400 text-sm">Películas en tendencia</p>
+                      <p className="text-white font-medium">Tendencias</p>
+                      <p className="text-gray-400 text-sm">Contenido en tendencia</p>
                     </div>
                     <div className="text-2xl font-bold text-orange-500">
                       {estadisticas.peliculasTrending}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center p-4 bg-gray-700/50 rounded-lg">
-                    <div>
-                      <p className="text-white font-medium">Contenido Regular</p>
-                      <p className="text-gray-400 text-sm">Películas estándar</p>
-                    </div>
-                    <div className="text-2xl font-bold text-blue-500">
-                      {estadisticas.totalPeliculas - estadisticas.peliculasTrending - estadisticas.peliculasDestacadas}
                     </div>
                   </div>
                 </div>

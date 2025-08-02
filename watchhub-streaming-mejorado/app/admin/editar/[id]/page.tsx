@@ -9,14 +9,18 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Save, Trash2, Upload, X } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Save, Trash2, Upload, X, Play, TrendingUp, Star } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import { uploadImage, uploadVideo } from "@/lib/storage"
+import { genres } from "@/lib/data"
 import type { Content } from "@/types"
+import { useToast } from "@/components/ui/toast-custom"
 
 export default function EditarContenidoPage() {
   const params = useParams()
   const router = useRouter()
+  const { showToast, ToastContainer } = useToast()
   const [content, setContent] = useState<Content | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -24,13 +28,19 @@ export default function EditarContenidoPage() {
   
   // Estados del formulario
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    genre: "",
-    year: "",
-    duration: "",
-    rating: ""
+    titulo: "",
+    descripcion: "",
+    genero: "",
+    año: "",
+    duracion: "",
+    calificacion: "",
+    trending: false,
+    destacado: false
   })
+
+  // Estados para duración
+  const [duracionHoras, setDuracionHoras] = useState("0")
+  const [duracionMinutos, setDuracionMinutos] = useState("0")
   
   // Estados para archivos
   const [newImage, setNewImage] = useState<File | null>(null)
@@ -58,16 +68,36 @@ export default function EditarContenidoPage() {
         return
       }
 
+      console.log('Datos cargados desde BD:', data)
       setContent(data)
+      
+      // Convertir duración de minutos a horas y minutos
+      const totalMinutos = parseInt(data.duracion) || 0
+      const horas = Math.floor(totalMinutos / 60)
+      const minutos = totalMinutos % 60
+      
       setFormData({
-        title: data.title || "",
-        description: data.description || "",
-        genre: data.genre || "",
-        year: data.year?.toString() || "",
-        duration: data.duration?.toString() || "",
-        rating: data.rating?.toString() || ""
+        titulo: data.titulo || "",
+        descripcion: data.descripcion || "",
+        genero: data.genero || "",
+        año: data.año?.toString() || "",
+        duracion: data.duracion?.toString() || "",
+        calificacion: data.calificacion?.toString() || "",
+        trending: data.trending || false,
+        destacado: data.destacado || false
       })
-      setImagePreview(data.image_url || "")
+      
+      setDuracionHoras(horas.toString())
+      setDuracionMinutos(minutos.toString())
+      setImagePreview(data.imagen_url || "")
+      console.log('FormData después de cargar:', {
+        titulo: data.titulo || "",
+        descripcion: data.descripcion || "",
+        genero: data.genero || "",
+        año: data.año?.toString() || "",
+        duracion: data.duracion?.toString() || "",
+        calificacion: data.calificacion?.toString() || ""
+      })
     } catch (error) {
       console.error('Error:', error)
     } finally {
@@ -75,11 +105,36 @@ export default function EditarContenidoPage() {
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }))
+  }
+
+  const handleCheckboxChange = (name: 'trending' | 'destacado') => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: !prev[name]
+    }))
+  }
+
+  const handleDuracionChange = (tipo: 'horas' | 'minutos', valor: string) => {
+    if (tipo === 'horas') {
+      setDuracionHoras(valor)
+    } else {
+      setDuracionMinutos(valor)
+    }
+    
+    // Calcular duración total en minutos
+    const horas = tipo === 'horas' ? parseInt(valor) || 0 : parseInt(duracionHoras) || 0
+    const minutos = tipo === 'minutos' ? parseInt(valor) || 0 : parseInt(duracionMinutos) || 0
+    const totalMinutos = (horas * 60) + minutos
+    
+    setFormData(prev => ({
+      ...prev,
+      duracion: totalMinutos.toString()
     }))
   }
 
@@ -105,7 +160,7 @@ export default function EditarContenidoPage() {
 
   const removeImage = () => {
     setNewImage(null)
-    setImagePreview(content?.image_url || "")
+    setImagePreview((content as any)?.imagen_url || "")
   }
 
   const removeVideo = () => {
@@ -117,8 +172,8 @@ export default function EditarContenidoPage() {
 
     setSaving(true)
     try {
-      let imageUrl = content.image_url
-      let videoUrl = content.video_url
+      let imageUrl = (content as any).imagen_url
+      let videoUrl = (content as any).video_url
 
       // Subir nueva imagen si existe
       if (newImage) {
@@ -145,16 +200,31 @@ export default function EditarContenidoPage() {
       }
 
       // Actualizar contenido en la base de datos
+      console.log('Datos a actualizar:', {
+        titulo: formData.titulo,
+        descripcion: formData.descripcion,
+        genero: formData.genero,
+        año: parseInt(formData.año) || null,
+        duracion: formData.duracion, // Mantener como string si así está en la DB
+        calificacion: parseFloat(formData.calificacion) || null,
+        trending: formData.trending,
+        destacado: formData.destacado,
+        imagen_url: imageUrl,
+        video_url: videoUrl
+      })
+
       const { error } = await supabase
         .from('contenidos')
         .update({
-          title: formData.title,
-          description: formData.description,
-          genre: formData.genre,
-          year: parseInt(formData.year) || null,
-          duration: parseInt(formData.duration) || null,
-          rating: parseFloat(formData.rating) || null,
-          image_url: imageUrl,
+          titulo: formData.titulo,
+          descripcion: formData.descripcion,
+          genero: formData.genero,
+          año: parseInt(formData.año) || null,
+          duracion: formData.duracion, // Mantener como string
+          calificacion: parseFloat(formData.calificacion) || null,
+          trending: formData.trending,
+          destacado: formData.destacado,
+          imagen_url: imageUrl,
           video_url: videoUrl,
           updated_at: new Date().toISOString()
         })
@@ -162,15 +232,23 @@ export default function EditarContenidoPage() {
 
       if (error) {
         console.error('Error updating content:', error)
-        alert('Error al actualizar el contenido')
+        console.error('Error details:', error.message, error.details, error.hint)
+        showToast(`Error al actualizar el contenido: ${error.message}`, 'error')
         return
       }
 
-      alert('Contenido actualizado exitosamente')
-      router.push('/admin')
+      console.log('Contenido actualizado con éxito')
+      showToast('Contenido actualizado exitosamente', 'success')
+      
+      // Recargar los datos actualizados
+      await fetchContent(content.id.toString())
+      
+      setTimeout(() => {
+        router.push('/admin')
+      }, 1500)
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al guardar los cambios')
+      showToast('Error al guardar los cambios', 'error')
     } finally {
       setSaving(false)
       setImageUploadProgress(0)
@@ -194,15 +272,17 @@ export default function EditarContenidoPage() {
 
       if (error) {
         console.error('Error deleting content:', error)
-        alert('Error al eliminar el contenido')
+        showToast('Error al eliminar el contenido', 'error')
         return
       }
 
-      alert('Contenido eliminado exitosamente')
-      router.push('/admin')
+      showToast('Contenido eliminado exitosamente', 'success')
+      setTimeout(() => {
+        router.push('/admin')
+      }, 1500)
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al eliminar el contenido')
+      showToast('Error al eliminar el contenido', 'error')
     } finally {
       setDeleting(false)
     }
@@ -237,18 +317,18 @@ export default function EditarContenidoPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-black/50 backdrop-blur-sm border-b border-gray-800 p-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/admin">
-            <Button variant="ghost" className="text-white hover:text-red-600">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver al panel admin
-            </Button>
-          </Link>
-          <h1 className="text-xl font-bold">Editar Contenido</h1>
+      {/* Header simplificado solo con logo */}
+      <header className="bg-black/90 backdrop-blur-md border-b border-red-500/20">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-center items-center">
+            {/* Logo centrado */}
+            <div className="flex items-center space-x-2">
+              <Play className="h-8 w-8 text-red-500" />
+              <h1 className="text-2xl font-bold text-white">WatchHub</h1>
+            </div>
+          </div>
         </div>
-      </div>
+      </header>
 
       <div className="max-w-4xl mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -259,11 +339,11 @@ export default function EditarContenidoPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="title" className="text-white">Título</Label>
+                <Label htmlFor="titulo" className="text-white">Título</Label>
                 <Input
-                  id="title"
-                  name="title"
-                  value={formData.title}
+                  id="titulo"
+                  name="titulo"
+                  value={formData.titulo}
                   onChange={handleInputChange}
                   className="bg-gray-700 border-gray-600 text-white"
                   placeholder="Nombre de la película"
@@ -271,37 +351,41 @@ export default function EditarContenidoPage() {
               </div>
 
               <div>
-                <Label htmlFor="description" className="text-white">Descripción</Label>
+                <Label htmlFor="descripcion" className="text-white">Sinopsis</Label>
                 <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
+                  id="descripcion"
+                  name="descripcion"
+                  value={formData.descripcion}
                   onChange={handleInputChange}
                   className="bg-gray-700 border-gray-600 text-white"
-                  placeholder="Descripción de la película"
+                  placeholder="Sinopsis de la película"
                   rows={4}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="genre" className="text-white">Género</Label>
-                  <Input
-                    id="genre"
-                    name="genre"
-                    value={formData.genre}
+                  <Label htmlFor="genero" className="text-white">Género</Label>
+                  <select
+                    id="genero"
+                    name="genero"
+                    value={formData.genero}
                     onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    placeholder="Acción, Drama, etc."
-                  />
+                    className="w-full bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2 mt-1"
+                  >
+                    <option value="">Seleccionar género</option>
+                    {genres.filter(g => g !== "Todos").map(genre => (
+                      <option key={genre} value={genre}>{genre}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <Label htmlFor="year" className="text-white">Año</Label>
+                  <Label htmlFor="año" className="text-white">Año</Label>
                   <Input
-                    id="year"
-                    name="year"
+                    id="año"
+                    name="año"
                     type="number"
-                    value={formData.year}
+                    value={formData.año}
                     onChange={handleInputChange}
                     className="bg-gray-700 border-gray-600 text-white"
                     placeholder="2024"
@@ -311,29 +395,84 @@ export default function EditarContenidoPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="duration" className="text-white">Duración (min)</Label>
-                  <Input
-                    id="duration"
-                    name="duration"
-                    type="number"
-                    value={formData.duration}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    placeholder="120"
-                  />
+                  <Label htmlFor="duracion" className="text-white">Duración</Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <div className="flex items-center space-x-1">
+                      <select
+                        value={duracionHoras}
+                        onChange={(e) => handleDuracionChange('horas', e.target.value)}
+                        className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-2 w-16"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <option key={i} value={i}>{i}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-400 text-sm">h</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <select
+                        value={duracionMinutos}
+                        onChange={(e) => handleDuracionChange('minutos', e.target.value)}
+                        className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-2 w-16"
+                      >
+                        {Array.from({ length: 60 }, (_, i) => (
+                          <option key={i} value={i}>{i}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-400 text-sm">min</span>
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <Label htmlFor="rating" className="text-white">Rating</Label>
+                  <Label htmlFor="calificacion" className="text-white">Rating (1-10)</Label>
                   <Input
-                    id="rating"
-                    name="rating"
+                    id="calificacion"
+                    name="calificacion"
                     type="number"
                     step="0.1"
-                    value={formData.rating}
+                    min="1"
+                    max="10"
+                    value={formData.calificacion}
                     onChange={handleInputChange}
                     className="bg-gray-700 border-gray-600 text-white"
                     placeholder="8.5"
                   />
+                </div>
+              </div>
+
+              {/* Campos de estado */}
+              <div className="space-y-4">
+                <Label className="text-white text-base font-medium">Estado del contenido</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-3 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <Checkbox
+                      id="trending"
+                      checked={formData.trending}
+                      onCheckedChange={() => handleCheckboxChange('trending')}
+                      className="border-gray-400 data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
+                    />
+                    <div className="flex items-center space-x-2">
+                      <TrendingUp className="h-4 w-4 text-orange-500" />
+                      <Label htmlFor="trending" className="text-white text-sm cursor-pointer">
+                        Tendencia
+                      </Label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <Checkbox
+                      id="destacado"
+                      checked={formData.destacado}
+                      onCheckedChange={() => handleCheckboxChange('destacado')}
+                      className="border-gray-400 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                    />
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-purple-500" />
+                      <Label htmlFor="destacado" className="text-white text-sm cursor-pointer">
+                        Destacado
+                      </Label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -366,23 +505,33 @@ export default function EditarContenidoPage() {
               <div>
                 <Label htmlFor="image" className="text-white">Nueva imagen</Label>
                 <div className="flex items-center space-x-2">
-                  <Input
+                  <input
                     id="image"
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}
-                    className="bg-gray-700 border-gray-600 text-white"
+                    className="hidden"
                   />
+                  <label
+                    htmlFor="image"
+                    className="flex items-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded cursor-pointer transition-colors"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span>Seleccionar archivo</span>
+                  </label>
                   {newImage && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={removeImage}
-                      className="border-gray-600 text-gray-300"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <span className="text-green-400 text-sm">✓ {newImage.name}</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={removeImage}
+                        className="border-gray-600 text-gray-300"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
                 {imageUploadProgress > 0 && (
@@ -402,30 +551,35 @@ export default function EditarContenidoPage() {
               <div>
                 <Label htmlFor="video" className="text-white">Nuevo video</Label>
                 <div className="flex items-center space-x-2">
-                  <Input
+                  <input
                     id="video"
                     type="file"
                     accept="video/*"
                     onChange={handleVideoChange}
-                    className="bg-gray-700 border-gray-600 text-white"
+                    className="hidden"
                   />
+                  <label
+                    htmlFor="video"
+                    className="flex items-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded cursor-pointer transition-colors"
+                  >
+                    <Play className="h-4 w-4" />
+                    <span>Seleccionar archivo</span>
+                  </label>
                   {newVideo && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={removeVideo}
-                      className="border-gray-600 text-gray-300"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <span className="text-green-400 text-sm">✓ {newVideo.name}</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={removeVideo}
+                        className="border-gray-600 text-gray-300"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
-                {newVideo && (
-                  <p className="text-sm text-green-400 mt-1">
-                    Nuevo video seleccionado: {newVideo.name}
-                  </p>
-                )}
                 {videoUploadProgress > 0 && (
                   <div className="mt-2">
                     <div className="bg-gray-700 rounded-full h-2">
@@ -440,11 +594,11 @@ export default function EditarContenidoPage() {
               </div>
 
               {/* Video actual */}
-              {content.video_url && (
+              {(content as any).video_url && (
                 <div>
                   <Label className="text-white mb-2 block">Video actual</Label>
                   <video
-                    src={content.video_url}
+                    src={(content as any).video_url}
                     controls
                     className="w-full h-32 bg-gray-900 rounded border border-gray-600"
                   >
@@ -468,16 +622,28 @@ export default function EditarContenidoPage() {
             {deleting ? "Eliminando..." : "Eliminar contenido"}
           </Button>
 
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? "Guardando..." : "Guardar cambios"}
-          </Button>
+          <div className="flex space-x-4">
+            <Button
+              variant="outline"
+              onClick={() => router.push('/admin')}
+              className="border-gray-600 text-gray-300 hover:bg-gray-700"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+            
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </div>
         </div>
       </div>
+      <ToastContainer />
     </div>
   )
 }

@@ -36,6 +36,10 @@ export default function AgregarContenidoPage() {
     trending: false,
     destacado: false
   })
+
+  // Estados para duración
+  const [duracionHoras, setDuracionHoras] = useState("1")
+  const [duracionMinutos, setDuracionMinutos] = useState("30")
   
   // Estados para archivos
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -52,6 +56,26 @@ export default function AgregarContenidoPage() {
 
   const handleChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Función para actualizar duración
+  const updateDuracion = (horas: string, minutos: string) => {
+    const h = parseInt(horas) || 0
+    const m = parseInt(minutos) || 0
+    const duracionTexto = `${h}h ${m}min`
+    setFormData(prev => ({ ...prev, duracion: duracionTexto }))
+  }
+
+  // Manejar cambio de horas
+  const handleHorasChange = (value: string) => {
+    setDuracionHoras(value)
+    updateDuracion(value, duracionMinutos)
+  }
+
+  // Manejar cambio de minutos
+  const handleMinutosChange = (value: string) => {
+    setDuracionMinutos(value)
+    updateDuracion(duracionHoras, value)
   }
 
   // Manejar selección de imagen
@@ -86,7 +110,7 @@ export default function AgregarContenidoPage() {
       return false
     }
     if (!formData.descripcion.trim()) {
-      showToast("La descripción es obligatoria", "error")
+      showToast("La sinopsis es obligatoria", "error")
       return false
     }
     if (!formData.genero) {
@@ -191,11 +215,6 @@ export default function AgregarContenidoPage() {
               <Play className="h-8 w-8 text-red-500" />
               <h1 className="text-2xl font-bold text-white">WatchHub</h1>
             </div>
-
-            {/* Slogan */}
-            <div className="text-white font-semibold text-lg">
-              AGREGAR NUEVO CONTENIDO
-            </div>
           </div>
         </div>
       </header>
@@ -298,18 +317,38 @@ export default function AgregarContenidoPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Duración */}
                   <div>
-                    <Label htmlFor="duracion" className="text-white text-base font-medium">
+                    <Label className="text-white text-base font-medium">
                       Duración *
                     </Label>
-                    <Input
-                      id="duracion"
-                      type="text"
-                      placeholder="120 min o 2h 30min"
-                      value={formData.duracion}
-                      onChange={(e) => handleChange('duracion', e.target.value)}
-                      className="mt-2 bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      required
-                    />
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div>
+                        <Label htmlFor="horas" className="text-sm text-gray-400">Horas</Label>
+                        <Input
+                          id="horas"
+                          type="number"
+                          min="0"
+                          max="10"
+                          value={duracionHoras}
+                          onChange={(e) => handleHorasChange(e.target.value)}
+                          className="bg-gray-700 border-gray-600 text-white"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="minutos" className="text-sm text-gray-400">Minutos</Label>
+                        <Input
+                          id="minutos"
+                          type="number"
+                          min="0"
+                          max="59"
+                          value={duracionMinutos}
+                          onChange={(e) => handleMinutosChange(e.target.value)}
+                          className="bg-gray-700 border-gray-600 text-white"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Duración: {formData.duracion}
+                    </p>
                   </div>
 
                   {/* Calificación */}
@@ -341,14 +380,14 @@ export default function AgregarContenidoPage() {
                   </div>
                 </div>
 
-                {/* Descripción */}
+                {/* Sinopsis */}
                 <div>
                   <Label htmlFor="descripcion" className="text-white text-base font-medium">
-                    Descripción *
+                    Sinopsis *
                   </Label>
                   <Textarea
                     id="descripcion"
-                    placeholder="Descripción detallada del contenido..."
+                    placeholder="Sinopsis detallada del contenido..."
                     value={formData.descripcion}
                     onChange={(e) => handleChange('descripcion', e.target.value)}
                     className="mt-2 bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 min-h-[120px]"
@@ -428,15 +467,12 @@ export default function AgregarContenidoPage() {
                         <span className="text-green-400 text-sm">✓ {videoFile.name}</span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400">
-                      Formatos soportados: MP4, WebM, MOV. Máximo 500MB.
-                    </p>
                   </div>
                 </div>
 
                 {/* Opciones especiales */}
                 <div className="space-y-4">
-                  <Label className="text-white text-base font-medium">Opciones Especiales</Label>
+                  <Label className="text-white text-base font-medium"></Label>
                   <div className="flex gap-6">
                     <label className="flex items-center space-x-2">
                       <input

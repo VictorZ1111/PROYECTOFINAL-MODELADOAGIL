@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Play, Menu, X, User, Search, LogOut, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,6 +21,10 @@ export function Header() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const pathname = usePathname()
+
+  // Verificar si estamos en el dashboard principal (página de inicio)
+  const isHomePage = pathname === '/'
 
   useEffect(() => {
     // Verificar usuario actual
@@ -61,9 +65,11 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-8">
-            <Link href="/" className="text-white hover:text-red-400 transition-colors font-medium">
-              Inicio
-            </Link>
+            {!isHomePage && (
+              <Link href="/" className="text-white hover:text-red-400 transition-colors font-medium">
+                Inicio
+              </Link>
+            )}
             <Link href="/planes" className="text-white hover:text-red-400 transition-colors font-medium">
               Planes
             </Link>
@@ -157,13 +163,15 @@ export function Header() {
         {isMenuOpen && (
           <nav className="mt-4 pb-4 lg:hidden">
             <div className="flex flex-col space-y-4">
-              <Link
-                href="/"
-                className="text-white hover:text-red-400 transition-colors font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Inicio
-              </Link>
+              {!isHomePage && (
+                <Link
+                  href="/"
+                  className="text-white hover:text-red-400 transition-colors font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Inicio
+                </Link>
+              )}
               <Link
                 href="/planes"
                 className="text-white hover:text-red-400 transition-colors font-medium"
