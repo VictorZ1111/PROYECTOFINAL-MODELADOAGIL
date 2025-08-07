@@ -69,3 +69,6 @@ export function useAuthRedirect() {
   
   return { redirectToLogin }
 }
+
+// Alias para compatibilidad
+export const useAuth = useAuthProtection

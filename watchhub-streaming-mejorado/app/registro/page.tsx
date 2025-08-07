@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Eye, EyeOff, CreditCard, Shield, User, Crown, Check } from "lucide-react"
+import { Eye, EyeOff, CreditCard, Shield, User, Crown, Check, Loader2 } from "lucide-react"
 
 interface Plan {
   id: number
@@ -29,6 +29,17 @@ interface Plan {
   precio: number
   max_peliculas: number
   descripcion: string
+}
+
+interface PaymentResult {
+  success: boolean
+  error?: string
+  // Para PayPal
+  orderId?: string
+  approvalUrl?: string
+  // Para Stripe
+  clientSecret?: string
+  paymentIntentId?: string
 }
 
 export default function RegistroPage() {
@@ -125,7 +136,7 @@ export default function RegistroPage() {
         return
       }
 
-      // Si es admin, verificar código único contra la base de datos
+      // Si es admin, procesar directamente sin pago
       if (formData.rol === 'admin') {
         const { data: codigoData, error: codigoError } = await supabase
           .from('codigos_admin')
@@ -139,9 +150,168 @@ export default function RegistroPage() {
           setIsLoading(false)
           return
         }
+
+        // Crear cuenta admin directamente
+        await createAdminAccount()
+        return
       }
 
-      // Registro de autenticación
+      // Para usuarios normales, PRIMERO procesar el pago
+      const selectedPlan = planes.find(p => p.id === formData.planId)
+      if (!selectedPlan) {
+        showToast("Error: Plan no encontrado", "error")
+        setIsLoading(false)
+        return
+      }
+
+      // Generar ID de transacción único
+      const transactionId = `watchhub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      // Procesar pago según el método seleccionado
+      let paymentResult: PaymentResult
+      if (formData.metodoPago === 'paypal') {
+        paymentResult = await processPayPalPayment(selectedPlan, transactionId)
+      } else {
+        paymentResult = await processStripePayment(selectedPlan, transactionId)
+      }
+
+      if (paymentResult.success) {
+        // Guardar datos temporalmente para después del pago
+        const registroData = {
+          formData: {
+            ...formData,
+            nombreUsuario: formData.nombreUsuario || formData.nombre.toLowerCase().replace(/\s/g, '')
+          },
+          transactionId,
+          planId: selectedPlan.id,
+          planData: selectedPlan
+        };
+        
+        console.log('💾 Guardando datos en sessionStorage:', registroData);
+        sessionStorage.setItem('registroData', JSON.stringify(registroData));
+
+        if (formData.metodoPago === 'paypal' && paymentResult.approvalUrl) {
+          console.log('🔄 Redirigiendo a PayPal:', paymentResult.approvalUrl);
+          // Redirigir a PayPal para completar el pago
+          window.location.href = paymentResult.approvalUrl
+        } else {
+          showToast("Pago procesado, creando cuenta...", "success")
+          // Para Stripe, continuar con la creación de cuenta
+          await createUserAccountAfterPayment(transactionId)
+        }
+      } else {
+        showToast(`Error en el pago: ${paymentResult.error}`, "error")
+      }
+
+    } catch (err) {
+      console.error("Error:", err)
+      showToast("Error de conexión", "error")
+    }
+
+    setIsLoading(false)
+  }
+
+  const processPayPalPayment = async (plan: Plan, transactionId: string): Promise<PaymentResult> => {
+    try {
+      console.log('🔄 Iniciando pago con PayPal...')
+      
+      const response = await fetch('/api/payments/paypal/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: plan.precio,
+          planId: plan.id,
+          transactionId,
+          userEmail: formData.email
+        }),
+      })
+
+      const result = await response.json()
+      
+      console.log('📋 Respuesta completa de PayPal:', result)
+
+      if (response.ok && result.orderId) {
+        console.log('✅ Orden PayPal creada:', result.orderId)
+        
+        // Usar directamente la approvalUrl de la respuesta
+        if (result.approvalUrl) {
+          console.log('🔗 URL de aprobación encontrada:', result.approvalUrl)
+          return { 
+            success: true, 
+            orderId: result.orderId,
+            approvalUrl: result.approvalUrl 
+          }
+        } else {
+          console.log('❌ No se encontró approvalUrl en la respuesta')
+          console.log('🔍 Enlaces disponibles:', result.links)
+          
+          // Fallback: buscar en links si approvalUrl no está directamente
+          const approvalUrl = result.links?.find((link: any) => link.rel === 'approve')?.href
+          
+          if (approvalUrl) {
+            console.log('🔗 URL de aprobación encontrada en links:', approvalUrl)
+            return { 
+              success: true, 
+              orderId: result.orderId,
+              approvalUrl 
+            }
+          } else {
+            return { success: false, error: 'No se pudo obtener URL de PayPal' }
+          }
+        }
+      } else {
+        console.log('❌ Error en la respuesta:', result)
+        return { success: false, error: result.error || 'Error creando orden PayPal' }
+      }
+    } catch (error) {
+      console.error('Error PayPal:', error)
+      return { success: false, error: 'Error de conexión con PayPal' }
+    }
+  }
+
+  const processStripePayment = async (plan: Plan, transactionId: string): Promise<PaymentResult> => {
+    try {
+      console.log('🔄 Iniciando pago con Stripe...')
+      
+      const response = await fetch('/api/payments/stripe/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: plan.precio,
+          planId: plan.id,
+          transactionId,
+          userEmail: formData.email
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.clientSecret) {
+        console.log('✅ Payment Intent creado')
+        
+        // Para Stripe, simulamos pago exitoso en desarrollo
+        // En producción aquí procesarías la tarjeta real
+        return { 
+          success: true, 
+          clientSecret: result.clientSecret,
+          paymentIntentId: result.paymentIntentId
+        }
+      } else {
+        return { success: false, error: result.error || 'Error creando Payment Intent' }
+      }
+    } catch (error) {
+      console.error('Error Stripe:', error)
+      return { success: false, error: 'Error de conexión con Stripe' }
+    }
+  }
+
+  const createAdminAccount = async () => {
+    try {
+      // Crear cuenta de administrador directamente
       const { data, error } = await supabase.auth.signUp({
         email: formData.email.trim().toLowerCase(),
         password: formData.password
@@ -149,76 +319,88 @@ export default function RegistroPage() {
 
       if (error) {
         showToast(`Error de registro: ${error.message}`, "error")
-        setIsLoading(false)
         return
       }
 
       if (data.user) {
-        // Crear perfil completo con columnas que SÍ existen en la tabla
         const perfilData = {
           id: data.user.id,
           nombre: formData.nombre.trim(),
           nombre_usuario: formData.nombreUsuario.trim(),
           email: formData.email.trim().toLowerCase(),
           rol: formData.rol,
-          plan_id: formData.rol === 'usuario' ? formData.planId : null
+          plan_id: null
         }
-
-        console.log("Datos a insertar:", perfilData)
 
         const { error: perfilError } = await supabase
           .from('perfiles')
           .insert([perfilData])
 
         if (perfilError) {
-          console.error("Error completo:", perfilError)
-          console.error("Código de error:", perfilError.code)
-          console.error("Mensaje:", perfilError.message)
-          console.error("Detalles:", perfilError.details)
-          
-          if (perfilError.code === '42703') {
-            showToast("Error: Faltan columnas en la base de datos. Ejecuta el script SQL primero.", "error")
-          } else if (perfilError.code === '42P01') {
-            showToast("Error: La tabla perfiles no existe. Ejecuta el script SQL primero.", "error")
-          } else if (perfilError.code === '42P17') {
-            showToast("Error: Problema con las políticas de seguridad. Ejecuta 'arreglar-politicas.sql'", "error")
-          } else if (perfilError.code === '23503') {
-            showToast("Error: Los planes no existen. Ejecuta 'insertar-planes-urgente.sql' primero.", "error")
-          } else if (perfilError.code === '23505') {
-            showToast("Error: El nombre de usuario ya está en uso.", "error")
-          } else {
-            showToast(`Error al crear el perfil: ${perfilError.message || 'Error desconocido'}`, "error")
-          }
+          showToast(`Error al crear el perfil: ${perfilError.message}`, "error")
         } else {
-          // Marcar código admin como usado si es admin
-          if (formData.rol === 'admin') {
-            await supabase
-              .from('codigos_admin')
-              .update({ 
-                usado: true, 
-                usado_por: data.user.id,
-                fecha_uso: new Date().toISOString()
-              })
-              .eq('codigo', formData.codigoAdmin.trim())
-          }
+          // Marcar código admin como usado
+          await supabase
+            .from('codigos_admin')
+            .update({ 
+              usado: true, 
+              usado_por: data.user.id,
+              fecha_uso: new Date().toISOString()
+            })
+            .eq('codigo', formData.codigoAdmin.trim())
 
-          showToast("¡Registro exitoso! Bienvenido a WatchHub", "success")
-          
-          // Redirigir según el rol
-          if (formData.rol === 'admin') {
-            router.push("/admin")
-          } else {
-            // Para usuarios normales, redirigir a proceso de pago (futuro)
-            router.push("/") 
-          }
+          showToast("¡Cuenta de administrador creada exitosamente!", "success")
+          router.push("/admin")
         }
       }
     } catch (err) {
       console.error("Error:", err)
       showToast("Error de conexión", "error")
     }
+  }
 
-    setIsLoading(false)
+  const createUserAccountAfterPayment = async (transactionId: string) => {
+    try {
+      console.log('👤 Creando cuenta después del pago con transactionId:', transactionId);
+      
+      const selectedPlan = planes.find(p => p.id === formData.planId);
+      
+      // Llamar a la API que crea el usuario después del pago exitoso
+      const response = await fetch('/api/auth/register-with-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userData: {
+            nombre: formData.nombre,
+            nombreUsuario: formData.nombreUsuario || formData.nombre.toLowerCase().replace(/\s/g, ''),
+            apellido: '', // Puedes agregar este campo si lo necesitas
+            email: formData.email,
+            password: formData.password
+          },
+          selectedPlan: selectedPlan,
+          paymentMethod: formData.metodoPago,
+          transactionId
+        }),
+      });
+
+      const responseData = await response.json();
+      console.log('📋 Respuesta del servidor:', responseData);
+
+      if (response.ok) {
+        showToast("¡Registro y pago exitosos! Bienvenido a WatchHub", "success")
+        // Limpiar datos temporales
+        sessionStorage.removeItem('registroData')
+        router.push('/login')
+      } else {
+        console.error('❌ Error del servidor:', responseData);
+        showToast(`Error creando cuenta: ${responseData.error || 'Error desconocido'}`, "error")
+      }
+    } catch (error) {
+      console.error('💥 Error:', error)
+      showToast("Error de conexión al crear cuenta", "error")
+    }
   }
 
   const selectedPlan = planes.find(p => p.id === formData.planId)
@@ -429,24 +611,13 @@ export default function RegistroPage() {
                     {/* Método de Pago */}
                     <div>
                       <Label className="text-white text-base font-medium">Método de Pago</Label>
+                      
                       <div className="grid grid-cols-2 gap-4 mt-2">
                         <button
                           type="button"
                           onClick={() => handleChange('metodoPago', 'stripe')}
                           className={`p-4 border-2 rounded-lg flex items-center justify-center space-x-2 transition-all ${
                             formData.metodoPago === 'stripe' 
-                              ? 'border-red-600 bg-red-600/10' 
-                              : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
-                          }`}
-                        >
-                          <CreditCard className="h-5 w-5 text-white" />
-                          <span className="text-white font-medium">Stripe</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleChange('metodoPago', 'paypal')}
-                          className={`p-4 border-2 rounded-lg flex items-center justify-center space-x-2 transition-all ${
-                            formData.metodoPago === 'paypal' 
                               ? 'border-red-600 bg-red-600/10' 
                               : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
                           }`}
@@ -480,9 +651,15 @@ export default function RegistroPage() {
                   className="w-full bg-red-600 hover:bg-red-700 text-white py-3"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Creando cuenta..." : 
-                   formData.rol === 'admin' ? "Crear Cuenta de Administrador" : 
-                   "Crear Cuenta y Continuar al Pago"}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      {formData.rol === 'admin' ? "Creando cuenta..." : "Procesando pago..."}
+                    </>
+                  ) : (
+                    formData.rol === 'admin' ? "Crear Cuenta de Administrador" : 
+                    `Pagar $${selectedPlan?.precio}/mes y Crear Cuenta`
+                  )}
                 </Button>
               </form>
             </CardContent>
