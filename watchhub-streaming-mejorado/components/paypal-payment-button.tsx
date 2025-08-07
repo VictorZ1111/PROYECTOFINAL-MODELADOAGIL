@@ -25,15 +25,36 @@ export default function PayPalPaymentButton({
   // Obtener usuario actual
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUser(user);
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('PayPal Button - Error getting user:', error);
+        } else {
+          console.log('PayPal Button - Usuario cargado:', user?.id || 'No autenticado');
+          setCurrentUser(user);
+        }
+      } catch (error) {
+        console.error('PayPal Button - Error in getUser:', error);
+        setCurrentUser(null);
+      }
     };
+    
     getUser();
+
+    // Escuchar cambios de autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('PayPal Button - Auth state changed:', event, session?.user?.id || 'No user');
+      setCurrentUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handlePayment = async () => {
+    console.log('🔍 Iniciando pago - Usuario actual:', currentUser?.id || 'No autenticado');
+    
     if (!currentUser) {
-      console.log('❌ No hay usuario autenticado');
+      console.log('❌ No hay usuario autenticado en PayPal button');
       onError('Debes iniciar sesión para realizar el pago');
       return;
     }

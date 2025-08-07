@@ -21,12 +21,14 @@ import {
 } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import { useFavorites } from "@/hooks/use-favorites"
+import { useUserPlan } from "@/hooks/use-user-plan"
 import { Header } from "@/components/header"
 import type { Content } from "@/types"
 
 function PeliculaPageContent() {
   const params = useParams()
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites()
+  const { userPlan, incrementReproductions, canWatchMore } = useUserPlan()
   const [content, setContent] = useState<Content | null>(null)
   const [loading, setLoading] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -35,6 +37,7 @@ function PeliculaPageContent() {
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
   const [showControls, setShowControls] = useState(false)
+  const [hasCountedView, setHasCountedView] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
@@ -93,15 +96,36 @@ function PeliculaPageContent() {
   }
 
   // Controles de video completos
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause()
-      } else {
-        videoRef.current.play()
+  const togglePlay = async () => {
+    if (!videoRef.current) return
+
+    if (!isPlaying) {
+      // Verificar si el usuario puede ver más contenido antes de reproducir
+      if (!canWatchMore()) {
+        alert('Has alcanzado el límite de reproducciones de tu plan. Actualiza tu plan para ver más contenido.')
+        return
       }
-      setIsPlaying(!isPlaying)
+
+      // Si no se ha contado esta vista y el usuario puede ver más
+      if (!hasCountedView) {
+        const result = await incrementReproductions()
+        if (result.success) {
+          setHasCountedView(true)
+          console.log('✅ Reproducción contada. Nuevas reproducciones:', result.newCount)
+        } else {
+          console.error('❌ Error contando reproducción:', result.error)
+          if (result.error?.includes('límite')) {
+            alert(result.error)
+            return
+          }
+        }
+      }
+
+      videoRef.current.play()
+    } else {
+      videoRef.current.pause()
     }
+    setIsPlaying(!isPlaying)
   }
 
   const handleVideoClick = (e: React.MouseEvent) => {
@@ -229,12 +253,30 @@ function PeliculaPageContent() {
             {!isPlaying && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                 <div className="bg-black/70 rounded-full p-4 transition-transform duration-200 hover:scale-110">
-                  <Button
-                    onClick={togglePlay}
-                    className="bg-red-600 hover:bg-red-700 rounded-full w-16 h-16 p-0"
-                  >
-                    <Play className="h-8 w-8 ml-1" />
-                  </Button>
+                  {canWatchMore() ? (
+                    <Button
+                      onClick={togglePlay}
+                      className="bg-red-600 hover:bg-red-700 rounded-full w-16 h-16 p-0"
+                    >
+                      <Play className="h-8 w-8 ml-1" />
+                    </Button>
+                  ) : (
+                    <div className="text-center">
+                      <Button
+                        disabled
+                        className="bg-gray-600 rounded-full w-16 h-16 p-0 cursor-not-allowed"
+                      >
+                        <Play className="h-8 w-8 ml-1 text-gray-400" />
+                      </Button>
+                      <p className="text-red-400 text-sm mt-2 max-w-48">
+                        Has alcanzado el límite de tu plan. 
+                        <br />
+                        <a href="/planes" className="underline hover:text-red-300">
+                          Actualizar plan
+                        </a>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

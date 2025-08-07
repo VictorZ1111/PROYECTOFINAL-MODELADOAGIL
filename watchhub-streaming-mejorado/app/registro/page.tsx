@@ -37,9 +37,6 @@ interface PaymentResult {
   // Para PayPal
   orderId?: string
   approvalUrl?: string
-  // Para Stripe
-  clientSecret?: string
-  paymentIntentId?: string
 }
 
 export default function RegistroPage() {
@@ -51,7 +48,7 @@ export default function RegistroPage() {
     nombreUsuario: "",
     rol: "usuario" as 'usuario' | 'admin',
     planId: 1,
-    metodoPago: "stripe" as 'stripe' | 'paypal',
+    metodoPago: "paypal",
     codigoAdmin: ""
   })
   const [planes, setPlanes] = useState<Plan[]>([
@@ -167,13 +164,8 @@ export default function RegistroPage() {
       // Generar ID de transacción único
       const transactionId = `watchhub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-      // Procesar pago según el método seleccionado
-      let paymentResult: PaymentResult
-      if (formData.metodoPago === 'paypal') {
-        paymentResult = await processPayPalPayment(selectedPlan, transactionId)
-      } else {
-        paymentResult = await processStripePayment(selectedPlan, transactionId)
-      }
+      // Procesar pago con PayPal
+      const paymentResult = await processPayPalPayment(selectedPlan, transactionId)
 
       if (paymentResult.success) {
         // Guardar datos temporalmente para después del pago
@@ -190,14 +182,12 @@ export default function RegistroPage() {
         console.log('💾 Guardando datos en sessionStorage:', registroData);
         sessionStorage.setItem('registroData', JSON.stringify(registroData));
 
-        if (formData.metodoPago === 'paypal' && paymentResult.approvalUrl) {
+        if (paymentResult.approvalUrl) {
           console.log('🔄 Redirigiendo a PayPal:', paymentResult.approvalUrl);
           // Redirigir a PayPal para completar el pago
           window.location.href = paymentResult.approvalUrl
         } else {
-          showToast("Pago procesado, creando cuenta...", "success")
-          // Para Stripe, continuar con la creación de cuenta
-          await createUserAccountAfterPayment(transactionId)
+          showToast("Error: No se obtuvo URL de PayPal", "error")
         }
       } else {
         showToast(`Error en el pago: ${paymentResult.error}`, "error")
@@ -268,44 +258,6 @@ export default function RegistroPage() {
     } catch (error) {
       console.error('Error PayPal:', error)
       return { success: false, error: 'Error de conexión con PayPal' }
-    }
-  }
-
-  const processStripePayment = async (plan: Plan, transactionId: string): Promise<PaymentResult> => {
-    try {
-      console.log('🔄 Iniciando pago con Stripe...')
-      
-      const response = await fetch('/api/payments/stripe/create-payment-intent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: plan.precio,
-          planId: plan.id,
-          transactionId,
-          userEmail: formData.email
-        }),
-      })
-
-      const result = await response.json()
-
-      if (response.ok && result.clientSecret) {
-        console.log('✅ Payment Intent creado')
-        
-        // Para Stripe, simulamos pago exitoso en desarrollo
-        // En producción aquí procesarías la tarjeta real
-        return { 
-          success: true, 
-          clientSecret: result.clientSecret,
-          paymentIntentId: result.paymentIntentId
-        }
-      } else {
-        return { success: false, error: result.error || 'Error creando Payment Intent' }
-      }
-    } catch (error) {
-      console.error('Error Stripe:', error)
-      return { success: false, error: 'Error de conexión con Stripe' }
     }
   }
 
@@ -608,28 +560,6 @@ export default function RegistroPage() {
                       </div>
                     </div>
 
-                    {/* Método de Pago */}
-                    <div>
-                      <Label className="text-white text-base font-medium">Método de Pago</Label>
-                      
-                      <div className="grid grid-cols-2 gap-4 mt-2">
-                        <button
-                          type="button"
-                          onClick={() => handleChange('metodoPago', 'stripe')}
-                          className={`p-4 border-2 rounded-lg flex items-center justify-center space-x-2 transition-all ${
-                            formData.metodoPago === 'stripe' 
-                              ? 'border-red-600 bg-red-600/10' 
-                              : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
-                          }`}
-                        >
-                          <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">PP</span>
-                          </div>
-                          <span className="text-white font-medium">PayPal</span>
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Resumen del plan seleccionado */}
                     {selectedPlan && (
                       <div className="bg-gray-700/30 p-4 rounded-lg border border-gray-600">
@@ -641,6 +571,14 @@ export default function RegistroPage() {
                         <p className="text-sm text-gray-400 mt-1">
                           Acceso a {selectedPlan.max_peliculas} películas por mes
                         </p>
+                        <div className="mt-3 pt-3 border-t border-gray-600">
+                          <div className="flex items-center justify-center space-x-2 text-blue-400">
+                            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">PP</span>
+                            </div>
+                            <span className="font-medium">Pago procesado con PayPal</span>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </>

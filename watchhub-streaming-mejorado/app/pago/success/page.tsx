@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
@@ -95,8 +96,24 @@ function PaymentSuccessContent() {
                 alert(`Pago exitoso, pero hubo un error creando la cuenta: ${responseData.error}. Contacta soporte.`);
               }
             } else {
-              console.error('❌ No se encontraron datos de registro en sessionStorage');
-              alert('Error: No se encontraron datos de registro. El pago fue exitoso, pero no pudimos crear tu cuenta automáticamente. Por favor contacta soporte.');
+              // CASO 2: Usuario logueado actualizando plan - No hay sessionStorage
+              console.log('🔄 Usuario logueado - verificando actualización de plan...');
+              
+              // Verificar si hay usuario logueado
+              const { data: { user } } = await supabase.auth.getUser();
+              
+              if (user) {
+                console.log('✅ Usuario autenticado - plan actualizado correctamente');
+                alert('¡Plan actualizado exitosamente!');
+                
+                // Redirigir al dashboard
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 1500);
+              } else {
+                console.error('❌ No hay usuario autenticado ni datos de registro');
+                alert('Error: El pago fue exitoso pero no pudimos identificar tu cuenta. Por favor contacta soporte.');
+              }
             }
           } else {
             const errorData = await response.json();

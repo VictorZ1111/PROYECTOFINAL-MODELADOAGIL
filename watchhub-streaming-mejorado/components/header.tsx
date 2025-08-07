@@ -3,9 +3,10 @@
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { Play, Menu, X, User, Search, LogOut, Settings } from "lucide-react"
+import { Play, Menu, X, User, Search, LogOut, Settings, Crown, Film } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabaseClient"
+import { useUserPlan } from "@/hooks/use-user-plan"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -22,6 +24,7 @@ export function Header() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
+  const { userPlan, getRemainingReproductions } = useUserPlan()
 
   // Verificar si estamos en el dashboard principal (página de inicio)
   const isHomePage = pathname === '/'
@@ -83,6 +86,20 @@ export function Header() {
 
           {/* Search and User Actions */}
           <div className="flex items-center space-x-4">
+            {/* Plan Info para usuarios logueados */}
+            {user && userPlan && (
+              <div className="hidden md:flex items-center space-x-3 bg-gray-800/50 px-3 py-2 rounded-lg">
+                <Crown className="h-4 w-4 text-yellow-500" />
+                <div className="text-sm">
+                  <span className="text-white font-medium">{userPlan.nombre}</span>
+                  <div className="flex items-center space-x-1 text-gray-300">
+                    <Film className="h-3 w-3" />
+                    <span>{getRemainingReproductions()}/{userPlan.max_peliculas}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* User Menu con ícono simple siempre visible */}
             {loading ? (
               <div className="w-8 h-8 bg-gray-600 rounded-full animate-pulse" />
@@ -96,6 +113,23 @@ export function Header() {
                 <DropdownMenuContent className="bg-gray-800 border-gray-700">
                   {user ? (
                     <>
+                      {/* Información del plan */}
+                      {userPlan && (
+                        <>
+                          <div className="px-3 py-2 text-sm">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <Crown className="h-4 w-4 text-yellow-500" />
+                              <span className="text-white font-medium">{userPlan.nombre}</span>
+                            </div>
+                            <div className="flex items-center space-x-1 text-gray-300 text-xs">
+                              <Film className="h-3 w-3" />
+                              <span>Reproducciones: {getRemainingReproductions()}/{userPlan.max_peliculas}</span>
+                            </div>
+                          </div>
+                          <DropdownMenuSeparator className="bg-gray-700" />
+                        </>
+                      )}
+                      
                       <DropdownMenuItem className="text-white hover:bg-gray-700">
                         <Link href="/perfil" className="flex items-center">
                           <User className="h-4 w-4 mr-2" />
