@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuthProtection } from "@/hooks/use-auth-protection"
 import { usePayment } from "@/hooks/use-payment"
@@ -33,7 +33,7 @@ interface PaymentData {
   }
 }
 
-export default function PagarPage() {
+function PagarPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuthProtection()
@@ -219,5 +219,17 @@ export default function PagarPage() {
 
       <Footer />
     </div>
+  )
+}
+
+export default function PagarPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Cargando...</div>
+      </div>
+    }>
+      <PagarPageContent />
+    </Suspense>
   )
 }
