@@ -1,28 +1,28 @@
-import { Tv, Monitor, Smartphone } from "lucide-react"
+import { Play, Star, Heart } from "lucide-react"
 
 export function FeaturesSection() {
   const features = [
     {
-      icon: Tv,
-      title: "Smart TV",
-      description: "Disfruta en tu televisor con la mejor calidad",
+      icon: Play,
+      title: "Calidad Premium",
+      description: "Películas en alta definición para la mejor experiencia",
     },
     {
-      icon: Monitor,
-      title: "Computadora",
-      description: "Ve desde tu navegador web favorito",
+      icon: Star,
+      title: "Contenido Exclusivo",
+      description: "Acceso a los últimos estrenos y clásicos",
     },
     {
-      icon: Smartphone,
-      title: "Móvil y Tablet",
-      description: "Lleva tu entretenimiento a donde vayas",
+      icon: Heart,
+      title: "Favoritos",
+      description: "Guarda y organiza tus películas preferidas",
     },
   ]
 
   return (
     <section className="py-20 px-4">
       <div className="container mx-auto">
-        <h2 className="text-4xl font-bold text-white text-center mb-12">Disponible en todos tus dispositivos</h2>
+        <h2 className="text-4xl font-bold text-white text-center mb-12">La mejor experiencia cinematográfica</h2>
         <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
           {features.map((feature, index) => (
             <div key={index} className="text-center">

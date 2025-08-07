@@ -1,11 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Play, Star, Heart, Info, Clock, Calendar, ImageIcon } from "lucide-react"
+import { Play, Star, Heart, Info, Clock, Calendar, ImageIcon, Edit } from "lucide-react"
 import { useFavorites } from "@/hooks/use-favorites"
+import { supabase } from "@/lib/supabaseClient"
 import type { Content } from "@/types"
 
 interface ContentCardProps {
@@ -15,8 +18,36 @@ interface ContentCardProps {
 
 export function ContentCard({ content, size = "medium" }: ContentCardProps) {
   const { isFavorite, toggleFavorite } = useFavorites()
+  const router = useRouter()
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Verificar autenticación y estado admin
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        setIsAuthenticated(!!user)
+        
+        if (user) {
+          const { data: perfil } = await supabase
+            .from('perfiles')
+            .select('rol')
+            .eq('id', user.id)
+            .single()
+          setIsAdmin(perfil?.rol === 'admin')
+        } else {
+          setIsAdmin(false)
+        }
+      } catch (error) {
+        setIsAuthenticated(false)
+        setIsAdmin(false)
+      }
+    }
+    checkUserStatus()
+  }, [])
 
   const sizeClasses = {
     small: "h-48",
@@ -51,42 +82,79 @@ export function ContentCard({ content, size = "medium" }: ContentCardProps) {
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60"></div>
 
-        {/* Hover Overlay */}
+        {/* Hover Overlay con opciones dinámicas */}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
           <div className="flex space-x-2">
-            <Button size="sm" className="bg-red-600 hover:bg-red-700 shadow-lg">
-              <Play className="h-4 w-4 mr-1" />
-              Ver
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-white text-white hover:bg-white hover:text-black bg-transparent shadow-lg"
-            >
-              <Info className="h-4 w-4" />
-            </Button>
+            {/* Botón VER - Para todos, pero redirige a login si no está autenticado */}
+            {isAuthenticated ? (
+              <Link href={`/pelicula/${content.id}`}>
+                <Button size="sm" className="bg-red-600 hover:bg-red-700 shadow-lg">
+                  <Play className="h-4 w-4 mr-1" />
+                  Ver
+                </Button>
+              </Link>
+            ) : (
+              <Button 
+                size="sm" 
+                className="bg-red-600 hover:bg-red-700 shadow-lg"
+                onClick={() => router.push('/login')}
+              >
+                <Play className="h-4 w-4 mr-1" />
+                Ver
+              </Button>
+            )}
+            
+            {/* Botón EDITAR - Solo para admin */}
+            {isAdmin && (
+              <Link href={`/admin/editar/${content.id}`}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-white text-white hover:bg-white hover:text-black bg-transparent shadow-lg"
+                >
+                  <Edit className="h-4 w-4 mr-1" />
+                  Editar
+                </Button>
+              </Link>
+            )}
+            
+            {/* Botón INFO - Solo para usuarios normales */}
+            {!isAdmin && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white text-white hover:bg-white hover:text-black bg-transparent shadow-lg"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // Scroll hacia abajo para ver más detalles
+                }}
+              >
+                <Info className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
 
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          <Badge className="bg-red-600 text-white text-xs shadow-lg">{content.type}</Badge>
           {content.trending && <Badge className="bg-orange-600 text-white text-xs shadow-lg">🔥 Trending</Badge>}
           {content.featured && <Badge className="bg-purple-600 text-white text-xs shadow-lg">⭐ Destacado</Badge>}
         </div>
 
-        {/* Favorite Button */}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="absolute top-2 right-2 text-white hover:text-red-400 bg-black/50 hover:bg-black/70 backdrop-blur-sm"
-          onClick={(e) => {
-            e.stopPropagation()
-            toggleFavorite(content.id)
-          }}
-        >
-          <Heart className={`h-4 w-4 ${isFavorite(content.id) ? "fill-red-500 text-red-500" : ""}`} />
-        </Button>
+        {/* Favorite Button - Solo para usuarios autenticados */}
+        {isAuthenticated && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="absolute top-2 right-2 text-white hover:text-red-400 bg-black/50 hover:bg-black/70 backdrop-blur-sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleFavorite(content.id)
+            }}
+          >
+            <Heart className={`h-4 w-4 ${isFavorite(content.id) ? "fill-red-500 text-red-500" : ""}`} />
+          </Button>
+        )}
 
         {/* Rating Badge */}
         <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm rounded px-2 py-1 flex items-center">

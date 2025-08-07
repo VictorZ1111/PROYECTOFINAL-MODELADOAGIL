@@ -18,11 +18,14 @@ export interface Content {
   year: string
   genre: string
   image: string
+  image_url?: string
+  video_url?: string
   description: string
   duration?: string
   seasons?: number
   featured: boolean
   trending: boolean
+  destacado?: boolean
 }
 
 export interface User {

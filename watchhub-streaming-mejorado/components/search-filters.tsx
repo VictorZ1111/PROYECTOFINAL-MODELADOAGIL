@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
 import { Search, Filter, X } from "lucide-react"
-import { genres, contentTypes, years } from "@/lib/data"
+import { genres, years } from "@/lib/data"
 import type { FilterOptions } from "@/types"
 
 interface SearchFiltersProps {
@@ -18,15 +18,10 @@ interface SearchFiltersProps {
 export function SearchFilters({ filters, onFilterChange, onClearFilters, resultCount }: SearchFiltersProps) {
   return (
     <div className="space-y-6 bg-gray-800/30 rounded-lg p-6">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-        <Input
-          placeholder="Buscar películas, series, documentales..."
-          value={filters.search}
-          onChange={(e) => onFilterChange("search", e.target.value)}
-          className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-        />
+      {/* Título y descripción del catálogo */}
+      <div className="mb-6">
+        <h1 className="text-4xl font-bold text-white mb-2">Catálogo Completo</h1>
+        <p className="text-gray-400">Explora nuestra extensa biblioteca de contenido premium</p>
       </div>
 
       {/* Active Filters */}
@@ -89,28 +84,6 @@ export function SearchFilters({ filters, onFilterChange, onClearFilters, resultC
                 }`}
               >
                 {genre}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Type Filter */}
-        <div>
-          <h3 className="text-white font-medium mb-2">Tipo de Contenido</h3>
-          <div className="flex flex-wrap gap-2">
-            {contentTypes.map((type) => (
-              <Button
-                key={type}
-                variant={filters.type === type ? "default" : "outline"}
-                size="sm"
-                onClick={() => onFilterChange("type", type)}
-                className={`${
-                  filters.type === type
-                    ? "bg-red-600 hover:bg-red-700 text-white"
-                    : "border-gray-600 text-gray-300 hover:bg-red-600 hover:border-red-600 bg-transparent"
-                }`}
-              >
-                {type}
               </Button>
             ))}
           </div>

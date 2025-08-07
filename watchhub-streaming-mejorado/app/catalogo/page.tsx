@@ -1,24 +1,51 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
+import { AdminHeader } from "@/components/admin-header"
 import { Footer } from "@/components/footer"
 import { ContentCard } from "@/components/content-card"
 import { SearchFilters } from "@/components/search-filters"
 import { Button } from "@/components/ui/button"
 import { useSearch } from "@/hooks/use-search"
-import { featuredContent } from "@/lib/data"
-import { Grid, List, SlidersHorizontal } from "lucide-react"
+import { useContenidos } from "@/hooks/use-contenidos"
+import { supabase } from "@/lib/supabaseClient"
+import { Grid, List, SlidersHorizontal, Loader2, Search } from "lucide-react"
 
 export default function CatalogoPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [showFilters, setShowFilters] = useState(true)
   const [sortBy, setSortBy] = useState<"title" | "year" | "rating">("title")
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  const { filters, filteredContent, updateFilter, clearFilters } = useSearch([
-    ...featuredContent,
-    ...featuredContent.map((item) => ({ ...item, id: item.id + "_2" })),
-  ])
+  const { contenidos, loading: contentLoading, error } = useContenidos()
+  const { filters, filteredContent, updateFilter, clearFilters } = useSearch(contenidos)
+
+  // Verificar si el usuario es admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        if (user) {
+          const { data: perfil } = await supabase
+            .from('perfiles')
+            .select('rol')
+            .eq('id', user.id)
+            .single()
+
+          setIsAdmin(perfil?.rol === 'admin')
+        }
+      } catch (error) {
+        console.error('Error verificando admin:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAdminStatus()
+  }, [])
 
   const sortedContent = [...filteredContent].sort((a, b) => {
     switch (sortBy) {
@@ -31,18 +58,52 @@ export default function CatalogoPage() {
     }
   })
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+        {/* Header según el tipo de usuario */}
+        {isAdmin ? (
+          <AdminHeader showInicio={true} />
+        ) : (
+          <Header />
+        )}
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 text-red-500 animate-spin mx-auto mb-4" />
+            <p className="text-white">Cargando contenido...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
-      <Header />
+      {/* Header según el tipo de usuario */}
+      {isAdmin ? (
+        <AdminHeader showInicio={true} />
+      ) : (
+        <Header />
+      )}
 
-      <section className="py-8 px-4">
+      <section className="py-2 px-4">
         <div className="container mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Catálogo Completo</h1>
-              <p className="text-gray-400">Explora nuestra extensa biblioteca de contenido premium</p>
+          <div className="flex items-center justify-between mb-4">
+            {/* Barra de búsqueda para todos los usuarios */}
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <input
+                  type="text"
+                  placeholder="Buscar películas..."
+                  value={filters.search}
+                  onChange={(e) => updateFilter("search", e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
             </div>
-
+            
             {/* View Controls */}
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
@@ -89,10 +150,10 @@ export default function CatalogoPage() {
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-4 gap-8">
-            {/* Filters Sidebar */}
+          <div className="grid lg:grid-cols-5 gap-8">
+            {/* Filters Sidebar - Más ancho */}
             {showFilters && (
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-2">
                 <SearchFilters
                   filters={filters}
                   onFilterChange={updateFilter}
@@ -103,7 +164,7 @@ export default function CatalogoPage() {
             )}
 
             {/* Content Grid */}
-            <div className={showFilters ? "lg:col-span-3" : "lg:col-span-4"}>
+            <div className={showFilters ? "lg:col-span-3" : "lg:col-span-5"}>
               {sortedContent.length > 0 ? (
                 <div
                   className={
