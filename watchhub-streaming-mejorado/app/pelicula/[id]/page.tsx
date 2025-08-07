@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, Suspense } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,7 @@ import { useFavorites } from "@/hooks/use-favorites"
 import { Header } from "@/components/header"
 import type { Content } from "@/types"
 
-export default function PeliculaPage() {
+function PeliculaPageContent() {
   const params = useParams()
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites()
   const [content, setContent] = useState<Content | null>(null)
@@ -359,5 +359,17 @@ export default function PeliculaPage() {
         </div>
       </section>
     </div>
+  )
+}
+
+export default function PeliculaPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-white text-xl">Cargando película...</div>
+      </div>
+    }>
+      <PeliculaPageContent />
+    </Suspense>
   )
 }

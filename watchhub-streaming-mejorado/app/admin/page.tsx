@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import { Footer } from "@/components/footer"
 import { AdminHeader } from "@/components/admin-header"
@@ -31,7 +31,7 @@ const formatDuration = (duracion: string | number | undefined) => {
   return `${horas}h ${minutos}min`
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
   const [user, setUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -412,5 +412,17 @@ function AdminContentCard({ content }: { content: any }) {
         </div>
       )}
     </Card>
+  )
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Cargando panel de administración...</div>
+      </div>
+    }>
+      <AdminPageContent />
+    </Suspense>
   )
 }

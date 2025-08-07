@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ import { genres } from "@/lib/data"
 import type { Content } from "@/types"
 import { useToast } from "@/components/ui/toast-custom"
 
-export default function EditarContenidoPage() {
+function EditarContenidoPageContent() {
   const params = useParams()
   const router = useRouter()
   const { showToast, ToastContainer } = useToast()
@@ -645,5 +645,17 @@ export default function EditarContenidoPage() {
       </div>
       <ToastContainer />
     </div>
+  )
+}
+
+export default function EditarContenidoPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-white text-xl">Cargando editor...</div>
+      </div>
+    }>
+      <EditarContenidoPageContent />
+    </Suspense>
   )
 }

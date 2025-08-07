@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,7 @@ import {
   X
 } from "lucide-react"
 
-export default function AdminVerPelicula() {
+function AdminVerPeliculaContent() {
   const params = useParams()
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -502,5 +502,17 @@ export default function AdminVerPelicula() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function AdminVerPelicula() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-white text-xl">Cargando contenido...</div>
+      </div>
+    }>
+      <AdminVerPeliculaContent />
+    </Suspense>
   )
 }
