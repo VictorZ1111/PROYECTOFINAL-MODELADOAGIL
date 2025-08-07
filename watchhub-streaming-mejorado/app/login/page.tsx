@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Eye, EyeOff, Lock } from "lucide-react"
 
-export default function LoginPage() {
+function LoginContent() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -192,6 +192,19 @@ export default function LoginPage() {
 
       <Footer />
     </div>
+  )
+}
+
+// Componente wrapper con Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Cargando...</div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }
 
